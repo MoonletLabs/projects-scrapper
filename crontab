@@ -1,0 +1,2 @@
+# Run funding-rounds then project-details every 4 hours
+0 */4 * * * docker exec cryptorank-scraper sh -c "npm run funding-rounds && npm run project-details" >> /proc/1/fd/1 2>&1

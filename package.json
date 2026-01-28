@@ -1,0 +1,29 @@
+{
+  "name": "cryptorank-vc-scraper",
+  "version": "1.1.0",
+  "description": "Scrapes Tier 1/2 VCs from CryptoRank with their website and Twitter accounts",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "tier1": "node src/index.js",
+    "tier2": "node src/index.js --tier2",
+    "funding-rounds": "node src/funding-rounds.js",
+    "funding-rounds:200": "node src/funding-rounds.js --limit 200",
+    "project-details": "node src/project-details.js",
+    "project-details:50": "node src/project-details.js --limit 50",
+    "project-details:2": "node src/project-details.js --limit 2"
+  },
+  "keywords": [
+    "cryptorank",
+    "vc",
+    "scraper",
+    "crypto",
+    "investors"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "puppeteer-core": "^22.0.0"
+  }
+}
