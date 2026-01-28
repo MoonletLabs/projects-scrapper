@@ -15,11 +15,45 @@
  */
 
 import { readFile, writeFile } from 'fs/promises';
+import { existsSync } from 'fs';
 import { ProjectDetailsScraper } from './project-details-scraper.js';
 
 const INPUT_FILE = './output/funding-rounds.json';
 const OUTPUT_FILE = './output/funding-rounds-detailed.json';
 const DELAY_BETWEEN_PROJECTS_MS = 2000;
+
+/**
+ * Load cached project details from existing output file
+ * @returns {object} - Map of projectKey -> { details, error }
+ */
+async function loadCachedDetails() {
+  const cache = {};
+
+  if (!existsSync(OUTPUT_FILE)) {
+    return cache;
+  }
+
+  try {
+    const content = await readFile(OUTPUT_FILE, 'utf-8');
+    const data = JSON.parse(content);
+
+    if (data.data && Array.isArray(data.data)) {
+      for (const round of data.data) {
+        // Only cache if details exist and no error
+        if (round.projectKey && round.details && !round.detailsError) {
+          cache[round.projectKey] = {
+            details: round.details,
+            error: null
+          };
+        }
+      }
+    }
+  } catch (e) {
+    // Ignore parse errors, just return empty cache
+  }
+
+  return cache;
+}
 
 /**
  * Parse command line arguments
@@ -174,26 +208,47 @@ async function main() {
   console.log(`    Screenshots: ./screenshots/project-details/`);
   console.log('');
 
-  // Step 3: Connect to browserless
-  console.log('[3] Connecting to browserless...');
-  const scraper = new ProjectDetailsScraper();
-  try {
-    await scraper.connect();
-  } catch (error) {
-    console.error(`    ERROR: ${error.message}`);
-    process.exit(1);
-  }
+  // Step 3: Load cached details
+  console.log('[3] Loading cached details...');
+  const projectDetails = await loadCachedDetails();
+  const cachedCount = Object.keys(projectDetails).length;
+  console.log(`    Found ${cachedCount} cached projects`);
   console.log('');
 
-  // Step 4: Scrape project details
-  console.log('[4] Scraping project details...');
-  const projectDetails = {}; // Map of projectKey -> { details, error }
-  let successCount = 0;
+  // Filter out already cached projects
+  const projectsToScrape = projects.filter(p => !projectDetails[p.projectKey]);
+  console.log(`    Need to scrape: ${projectsToScrape.length} projects`);
+  console.log('');
+
+  // Step 4: Connect to browserless (only if there are projects to scrape)
+  let scraper = null;
+  if (projectsToScrape.length > 0) {
+    console.log('[4] Connecting to browserless...');
+    scraper = new ProjectDetailsScraper();
+    try {
+      await scraper.connect();
+    } catch (error) {
+      console.error(`    ERROR: ${error.message}`);
+      process.exit(1);
+    }
+    console.log('');
+  } else {
+    console.log('[4] All projects cached - skipping browserless connection');
+    console.log('');
+  }
+
+  // Step 5: Scrape project details
+  console.log('[5] Scraping project details...');
+  let successCount = cachedCount;
   let failCount = 0;
 
-  for (let i = 0; i < projects.length; i++) {
-    const project = projects[i];
-    const progress = `[${i + 1}/${projects.length}]`;
+  if (projectsToScrape.length === 0) {
+    console.log('    All projects already cached - nothing to scrape');
+  }
+
+  for (let i = 0; i < projectsToScrape.length; i++) {
+    const project = projectsToScrape[i];
+    const progress = `[${i + 1}/${projectsToScrape.length}]`;
 
     process.stdout.write(`    ${progress} ${project.projectName || project.projectKey}... `);
 
@@ -241,28 +296,32 @@ async function main() {
     }
 
     // Delay between projects (except for the last one)
-    if (i < projects.length - 1) {
+    if (i < projectsToScrape.length - 1) {
       await delay(DELAY_BETWEEN_PROJECTS_MS);
     }
   }
 
   // Disconnect from browser
-  await scraper.disconnect();
+  if (scraper) {
+    await scraper.disconnect();
+  }
   console.log('');
 
-  // Step 5: Summary
+  // Step 6: Summary
   const endTime = Date.now();
   const duration = endTime - startTime;
 
-  console.log('[5] Summary');
+  console.log('[6] Summary');
   console.log(`    Total projects: ${projects.length}`);
+  console.log(`    - Cached: ${cachedCount}`);
+  console.log(`    - Scraped: ${projectsToScrape.length}`);
   console.log(`    - Successful: ${successCount}`);
   console.log(`    - Failed: ${failCount}`);
   console.log(`    Time elapsed: ${formatDuration(duration)}`);
   console.log('');
 
-  // Step 6: Save final results
-  console.log('[6] Saving final results...');
+  // Step 7: Save final results
+  console.log('[7] Saving final results...');
   try {
     await saveResults(
       fundingData.data,
