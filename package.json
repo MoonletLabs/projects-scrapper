@@ -12,7 +12,8 @@
     "funding-rounds:200": "node src/funding-rounds.js --limit 200",
     "project-details": "node src/project-details.js",
     "project-details:50": "node src/project-details.js --limit 50",
-    "project-details:2": "node src/project-details.js --limit 2"
+    "project-details:2": "node src/project-details.js --limit 2",
+    "generate-test-data": "node src/generate-test-data.js"
   },
   "keywords": [
     "cryptorank",
