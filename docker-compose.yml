@@ -13,7 +13,7 @@ services:
     restart: unless-stopped
 
   scheduler:
-    image: docker:24-cli
+    image: docker:27-cli
     container_name: cryptorank-scheduler
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
